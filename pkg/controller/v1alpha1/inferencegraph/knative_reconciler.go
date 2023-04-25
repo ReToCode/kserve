@@ -20,6 +20,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"reflect"
+	"strings"
+
 	"github.com/golang/protobuf/proto"
 	v1alpha1api "github.com/kserve/kserve/pkg/apis/serving/v1alpha1"
 	"github.com/kserve/kserve/pkg/constants"
@@ -36,10 +39,8 @@ import (
 	"knative.dev/pkg/kmp"
 	"knative.dev/serving/pkg/apis/autoscaling"
 	knservingv1 "knative.dev/serving/pkg/apis/serving/v1"
-	"reflect"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
-	"strings"
 )
 
 var log = logf.Log.WithName("GraphKsvcReconciler")
@@ -130,15 +131,21 @@ func createKnativeService(componentMeta metav1.ObjectMeta, graph *v1alpha1api.In
 		annotations[autoscaling.MinScaleAnnotationKey] = fmt.Sprint(constants.DefaultMinReplicas)
 	}
 
+	ksvcAnnotations := make(map[string]string)
+	if value, ok := annotations["serving.knative.openshift.io/enablePassthrough"]; ok {
+		ksvcAnnotations["serving.knative.openshift.io/enablePassthrough"] = value
+	}
+
 	labels = utils.Filter(componentMeta.Labels, func(key string) bool {
 		return !utils.Includes(constants.RevisionTemplateLabelDisallowedList, key)
 	})
 	labels[constants.InferenceGraphLabel] = componentMeta.Name
 	service := &knservingv1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      componentMeta.Name,
-			Namespace: componentMeta.Namespace,
-			Labels:    componentMeta.Labels,
+			Name:        componentMeta.Name,
+			Namespace:   componentMeta.Namespace,
+			Labels:      componentMeta.Labels,
+			Annotations: ksvcAnnotations,
 		},
 		Spec: knservingv1.ServiceSpec{
 			ConfigurationSpec: knservingv1.ConfigurationSpec{

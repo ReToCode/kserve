@@ -102,6 +102,11 @@ func createKnativeService(componentMeta metav1.ObjectMeta,
 		delete(annotations, constants.RollOutDurationAnnotationKey)
 	}
 
+	if value, ok := annotations["serving.knative.openshift.io/enablePassthrough"]; ok {
+		ksvcAnnotations["serving.knative.openshift.io/enablePassthrough"] = value
+		delete(annotations, "serving.knative.openshift.io/enablePassthrough")
+	}
+
 	lastRolledoutRevision := componentStatus.LatestRolledoutRevision
 
 	// Log component status and canary traffic percent
